@@ -68,6 +68,60 @@ def mask_to_bbox(mask, threshold=0.0) -> list | None:
     return [int(x_min), int(y_min), int(x_max), int(y_max)]
 
 
+def convert_norm_bbox_to_pixels(normalized_box, img_width=2560, img_height=1440):
+    """
+        Convert normalized YOLO format [class_id, x_center, y_center, width, height] to
+        pixel coordinates [x1, y1, x2, y2]
+
+        Parameters:
+        normalized_box (str): Space-separated string with format "class_id x_center y_center width height"
+        img_width (int): Width of the image in pixels
+        img_height (int): Height of the image in pixels
+
+        Returns:
+        list: Pixel coordinates [x1, y1, x2, y2]
+
+
+    # Example using a yolo annotation format bounding box
+    normalized_box_str = "1 0.14062499999999997 0.39129044792991385 0.2189732142857142 0.30758089585982773
+        2 0.34402901785714285 0.2625 0.11350446428571427 0.2321428571428571
+        3 0.5143500813057096 0.09639695254155617 0.07427276559865092 0.10863346181642963
+        4 0.6826801517067003 0.45399634780165754 0.12895069532237624 0.38432364096080884
+        5 0.07016434892541097 0.19441288033566656 0.14032869785082194 0.11462994665251108
+        6 0.7759125639839426 0.4714145245118699 0.1308550237388152 0.24610198061525504"
+    pixel_box = convert_normalized_to_pixels(normalized_box_str)
+
+    """
+
+    all_bounding_boxes = []
+
+    for box in normalized_box.split("\n"):
+        values = box.split()
+        class_id = int(values[0])
+        x_center = float(values[1])
+        y_center = float(values[2])
+        width = float(values[3])
+        height = float(values[4])
+
+        # Convert center coordinates to absolute pixels
+        x_center_px = x_center * img_width
+        y_center_px = y_center * img_height
+
+        # Convert width/height to absolute pixels
+        width_px = width * img_width
+        height_px = height * img_height
+
+        # Calculate corner coordinates
+        x1 = x_center_px - (width_px / 2)
+        y1 = y_center_px - (height_px / 2)
+        x2 = x_center_px + (width_px / 2)
+        y2 = y_center_px + (height_px / 2)
+
+        all_bounding_boxes.append([x1, y1, x2, y2])
+
+    return all_bounding_boxes
+
+
 def plot_mask_on_image(
     mask, frame_id, video_url, obj_id=None, alpha=0.5, colormap="jet"
 ):
