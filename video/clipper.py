@@ -74,12 +74,15 @@ def extract_clips(
         logger.warning("Video %s too short for clip extraction", name)
         return
 
-    # Choisir aléatoirement les indices de départ pour les clips
-    start_indices = random.sample(range(max_start_idx), min(num_clips, max_start_idx))
+    # Choisir aléatoirement les indices de départ pour les clips parmi les indices possibles
+    all_start_indices = list(range(0,max_start_idx + 1, num_frames * step))
+    logger.info("Found %d possible clips for video %s", len(all_start_indices), name)
+    start_indices = random.sample(all_start_indices, min(num_clips, len(all_start_indices)))
 
     pbar = tqdm(total=len(start_indices), desc=f"Clipping {name}", unit="clip")
 
-    for clip_id, start_idx in enumerate(start_indices):
+    for start_idx in start_indices:
+        clip_id = all_start_indices.index(start_idx) # Numéro du clip parmi tous les indices possibles
         frames = []
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_idx)
         for _ in range(num_frames * step):
@@ -91,7 +94,7 @@ def extract_clips(
                 frames.append(frame)
 
         if frames:
-            out_path = os.path.join(output_folder, f"{name[:-4]}_clip{clip_id}_start{start_idx}.mp4")
+            out_path = os.path.join(output_folder, f"{name[:-4]}_clip{clip_id}.mp4")
 
             out = cv2.VideoWriter(
                 out_path,
