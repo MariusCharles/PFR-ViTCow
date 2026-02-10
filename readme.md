@@ -3,8 +3,14 @@
 This repository implements a **complete video segmentation and cropping pipeline** built on top of **SAM3 (Segment Anything Model 3)**. It is designed to generate a dataset of short video clips focusing on **individual cows and their behavior**, using videos captured by **cameras installed in cattle stables**.
 
 <p align="center">
-  <img src="others/video_readme.gif" alt="Pipeline demo">
+  <video src="others/demo.mp4"
+         width="600"
+         autoplay
+         loop
+         muted>
+  </video>
 </p>
+
 
 The pipeline enables you to:
 - split long videos into short clips
