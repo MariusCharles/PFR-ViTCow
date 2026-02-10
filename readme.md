@@ -25,6 +25,16 @@ This repository acts as an **orchestration layer** around the official **SAM3** 
 
 ## Running the Pipeline : On `https://mydocker.centralesupelec.fr`
 
+**Note:** If you have already set up the environment and successfully run the pipeline once, you do **not** need to recreate the virtual environment. However, after restarting the VM, you must run the following commands:
+
+```bash
+. .venv/bin/activate
+sudo apt update
+sudo apt install -y libgl1
+```
+
+Then you can launch the pipeline as usual.
+
 ### 1. Environment
 
 We create a venv to isolate the environment. First install python and dependencies : 
