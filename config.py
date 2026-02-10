@@ -1,9 +1,9 @@
 from pathlib import Path
 
-# get project root (current directory of this config file)
+# Get project root (current directory of this config file)
 PROJECT_ROOT = Path(__file__).resolve().parent
 
-# SFTP PARAMS 
+# SFTP parameters
 SFTP_USER = "sftpiodaa"
 SFTP_HOST = "88.189.55.27"
 SFTP_PORT = 22222
@@ -20,12 +20,12 @@ FARM_NAMES = {
 TEST_FOLDER="CORDEMAIS"
 PRETRAIN_DIR= "pretraining_dataset"
 
-# FOLDER MANAGEMENT 
+# Folder management
 CLIP_FOLDER = PROJECT_ROOT / "clips"
 CROP_FOLDER = PROJECT_ROOT / "crops"
 LOCAL_TMP_DIR = PROJECT_ROOT / "data"   # for sftp downloads
 
-# EXTRACTION / CROP PARAMS
+# Extraction / Crops parameters
 NUM_FRAMES_PER_CLIP = 20
 FRAME_STEP = 4
 NUM_CLIP = 10
@@ -33,12 +33,13 @@ NUM_CLIP = 10
 CROP_SIZE = 224
 PROMPT_CLASS = "cow"
 
-# Safety margin for bounding box expansion (fraction of max side)
+# Margin for BBox expansion (fraction of max side)
 SAFETY_MARGIN = 0.1  # 10% margin
 
-START = 9
-END = 17
+# Time range for extraction 
+START = 9   # Start hour (9 AM)
+END = 17    # End hour (5 PM)
 
-# creates folders automatically 
+# Creates folders automatically 
 for d in [CLIP_FOLDER, CROP_FOLDER, LOCAL_TMP_DIR]:
     d.mkdir(parents=True, exist_ok=True)

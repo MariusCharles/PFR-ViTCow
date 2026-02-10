@@ -91,7 +91,70 @@ For example, to set `max_num_objects` to 10 on `centrale mydocker` :
 bash update_max_objects.sh .venv/src/sam3/ 10
 ```
 
-### 5. Running the Pipeline
+### 5. Set-up config file
+
+The `config.py` file contains all the necessary configuration parameters for the pipeline, including SFTP settings, folder paths, and extraction parameters. Ensure the file is properly configured before running the pipeline.
+
+Key parameters to configure:
+
+- **FARM_NAMES**: The code is automatically configured to randomly sample from all available farms (it is recommended to keep the full list unless you want to target a specific farm).
+- **NUM_FRAMES_PER_CLIP**: Number of frames in the output video clips (e.g., 20 frames correspond to an output clip of approximately 7 seconds at 12 fps and cover approximately 4 seconds of the original video at 20 fps).
+- **FRAME_STEP**: Downsampling stride (for example, with a stride of 4 and NUM_FRAMES_PER_CLIP = 20, the pipeline processes 80 frames from the original video and outputs 20).
+- **PROMPT_CLASS**: Change the text prompt for object detection (e.g., 'cow').
+- **SAFETY_MARGIN**: Expansion factor applied to the bounding box to avoid cropping the detected object.
+- **START, END**: Define daytime hours for video processing.
+
+The structure of `config.py`:
+
+```python
+from pathlib import Path
+
+# Get project root (current directory of this config file)
+PROJECT_ROOT = Path(__file__).resolve().parent
+
+# SFTP parameters
+SFTP_USER = "sftpiodaa"
+SFTP_HOST = "88.189.55.27"
+SFTP_PORT = 22222
+
+REMOTE_DIR = "/PACECOWVID"
+UPLOAD_DIR = "/PACECOWVID/ViTCow_upload"
+FARM_NAMES = {
+            "BUISSON": REMOTE_DIR + "/BUISSON/20241016 - BUISSON/CUT",
+            "COPTIERE": REMOTE_DIR + "/COPTIERE",
+            "CORDEMAIS": REMOTE_DIR + "/CORDEMAIS",
+            "CYPRES": REMOTE_DIR + "/CYPRES",
+            "SAULAIE": REMOTE_DIR + "/SAULAIE/20250327 - Saulaie - Regis Bedouet"
+            }
+TEST_FOLDER="CORDEMAIS"
+PRETRAIN_DIR= "pretraining_dataset"
+
+# Folder management
+CLIP_FOLDER = PROJECT_ROOT / "clips"
+CROP_FOLDER = PROJECT_ROOT / "crops"
+LOCAL_TMP_DIR = PROJECT_ROOT / "data"   # for sftp downloads
+
+# Extraction / Crops parameters
+NUM_FRAMES_PER_CLIP = 20
+FRAME_STEP = 4
+NUM_CLIP = 10
+
+CROP_SIZE = 224
+PROMPT_CLASS = "cow"
+
+# Margin for BBox expansion (fraction of max side)
+SAFETY_MARGIN = 0.1  # 10% margin
+
+# Time range for extraction 
+START = 9   # Start hour (9 AM)
+END = 17    # End hour (5 PM)
+
+# Creates folders automatically 
+for d in [CLIP_FOLDER, CROP_FOLDER, LOCAL_TMP_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
+```
+
+### 6. Running the Pipeline
 
 The main entry point is:
 
@@ -238,24 +301,6 @@ The main entry point is:
 python main.py
 ```
 
-#### Configuration
-
-Pipeline parameters are defined in `config.py`:
-
-```python
-INPUT_FOLDER = "/path/to/input/videos"
-CLIP_FOLDER = "/path/to/clips"
-CROP_FOLDER = "/path/to/crops"
-
-NUM_FRAMES_PER_CLIP = 20
-FRAME_STEP = 4
-
-CROP_SIZE = 224
-
-PROMPT_CLASS = "cow"
-```
-
----
 
 ##  Repository Architecture
 
