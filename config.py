@@ -17,8 +17,6 @@ FARM_NAMES = {
             "CYPRES": REMOTE_DIR + "/CYPRES",
             "SAULAIE": REMOTE_DIR + "/SAULAIE/20250327 - Saulaie - Regis Bedouet"
             }
-TEST_FOLDER="CORDEMAIS"
-PRETRAIN_DIR= "pretraining_dataset"
 
 # Folder management
 CLIP_FOLDER = PROJECT_ROOT / "clips"
