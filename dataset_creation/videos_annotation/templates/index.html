@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Annotation</title>
+    <style>
+        /* Full-page background */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-image: url('{{ url_for("static", filename="background.jpg") }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Container to hold video and buttons */
+        .container {
+            background-color: rgba(255, 255, 255, 0.85); /* semi-transparent white box */
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            gap: 20px; /* space between video and buttons */
+            align-items: flex-start;
+        }
+
+        video {
+            border: 2px solid #333;
+            border-radius: 8px;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        h2 {
+            text-align: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <video width="640" controls>
+        <source src="{{ url_for('static', filename='videos/h264/' + video_name) }}" type="video/mp4">
+    </video>
+
+    <form method="POST" action="/annotate" class="buttons">
+    <input type="hidden" name="video_name" value="{{ video_name }}">
+    {% for behavior in behaviors %}
+    <button type="submit" name="behavior" value="{{ behavior }}">
+        {{ behavior }}
+    </button>
+    {% endfor %}
+</form>
+
+</div>
+
+</body>
+</html>
