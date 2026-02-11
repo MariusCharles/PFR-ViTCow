@@ -1,0 +1,2 @@
+TEST_FOLDER="CORDEMAIS"
+PRETRAIN_DIR= "pretraining_dataset"

@@ -1,0 +1,12 @@
+# conda create -n videomae python=3.10 -y
+
+python==3.10.*
+torch==1.13.1
+torchvision==0.14.1
+numpy==1.21.6
+timm==0.4.12
+einops
+tensorboardX
+decord
+opencv-python==4.7.0.72
+pandas==2.0.3
