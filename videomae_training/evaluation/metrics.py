@@ -9,8 +9,7 @@ from sklearn.metrics import (
 )
 
 def hit_at_k(
-    neighbor_labels: List[List[int]],
-    true_labels: List[int],
+    all_data: Dict[int, Dict[str, List[int]]],
     k: int
 ) -> float:
     """
@@ -20,21 +19,28 @@ def hit_at_k(
     partage le label de la requête, sinon 0.
 
     Args:
-        neighbor_labels: labels des k voisins pour chaque sample
-        true_labels: labels ground truth
-        k: nombre de voisins considérés
+         Args:
+        all_data: dictionnaire indexé par sample_id.
+            all_data[i]["label"] : int
+            all_data[i]["neighbours"] : List[int]
+                Labels des voisins triés par proximité croissante.
+        k: nombre de voisins considérés.
 
     Returns:
-        Hit@k moyen
+        float: Hit@K moyen sur l'ensemble des requêtes.
     """
     hits = []
-    for neighbors, y in zip(neighbor_labels, true_labels):
-        hits.append(int(y in neighbors[:k]))
+
+    for sample in all_data.values():
+        y = sample["label"]
+        neighbours = sample["neighbours"][:k]
+        hits.append(int(y in neighbours))
+
     return float(np.mean(hits))
 
 def classification_metrics(
-    y_true: Sequence[int],,
-    y_pred: Sequence[int],,
+    y_true: Sequence[int],
+    y_pred: Sequence[int],
     y_scores: Optional[np.ndarray] = None,
     beta: float = 1.0,
     average_type: str = "micro",
