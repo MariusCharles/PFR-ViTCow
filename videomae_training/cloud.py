@@ -10,6 +10,7 @@ from config import (
     SFTP_HOST,
     SFTP_PORT,
     UPLOAD_DIR,
+    FARM_NAMES,
     TEST_FOLDER,
     PRETRAIN_DIR
 )
@@ -69,21 +70,22 @@ def list_sftp_videos(folders_dict: Dict[str, str]) -> List[Dict[str, str]]:
     return all_videos
 
 
-def download_sftp_video(filename: str, alias: str) -> str:
+def download_sftp_video(filename: str, alias: str, local_dir: str) -> str:
     """Downloads a video file from the SFTP server.
     
     Args:
         filename (str): The name of the video file.
         alias (str): The alias of the folder where the video is located.
+        local_dir (str): The path to the local directory where the videos are to be downloaded.
     
     Returns:
         str: The local path where the video was downloaded.
     """
     remote_path = f"{FARM_NAMES[alias]}/{filename}"
     logging.info("Downloading video %s from %s", filename, remote_path)
-    local_path = os.path.join(LOCAL_TMP_DIR, os.path.basename(filename))
+    local_path = os.path.join(local_dir, os.path.basename(filename))
 
-    os.makedirs(LOCAL_TMP_DIR, exist_ok=True)
+    os.makedirs(local_dir, exist_ok=True)
 
     cmd = f"echo 'get \"{remote_path}\" \"{local_path}\"' | sftp -P {SFTP_PORT} {SFTP_USER}@{SFTP_HOST}"
     subprocess.run(cmd, shell=True, check=True)
@@ -130,15 +132,15 @@ def download_sftp_pretrain_dataset() -> Dict[str, List[str]]:
         alias = video["alias"]
         filename = video["filename"]
 
-        local_path = os.path.join(
-            test_dir if alias == TEST_FOLDER else train_dir,
-            os.path.basename(filename)
-        )
-        download_sftp_video(filename, alias)
+        
         
         if alias == TEST_FOLDER:
+            local_path = os.path.join(test_dir,os.path.basename(filename))
+            download_sftp_video(filename, alias, test_dir)
             test_files.append(local_path)
         else:
+            local_path = os.path.join(train_dir,os.path.basename(filename))
+            download_sftp_video(filename, alias, train_dir)
             train_files.append(local_path)
 
         progress = int((i / total) * 50)
