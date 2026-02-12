@@ -3,7 +3,13 @@ import subprocess
 import logging
 import config
 from video.clipper import extract_clips, is_daytime_video
-from pipeline.cloud import list_sftp_videos, download_sftp_video, remove_video, upload_video, check_if_exists
+from pipeline.cloud import (
+    list_sftp_videos,
+    download_sftp_video,
+    remove_video,
+    upload_video,
+    check_if_exists,
+)
 import json
 import random
 
@@ -15,6 +21,7 @@ logging.basicConfig(
 
 logging.info("Pipeline started")
 
+
 def clean_mp4_files(folder_path: str):
     if os.path.exists(folder_path):
         for f in os.listdir(folder_path):
@@ -25,6 +32,7 @@ def clean_mp4_files(folder_path: str):
                 except Exception as e:
                     logging.error(f"Erreur lors de la suppression de {file_path}: {e}")
 
+
 clean_mp4_files(config.CLIP_FOLDER)
 clean_mp4_files(config.CROP_FOLDER)
 
@@ -34,7 +42,11 @@ videos_path = list_sftp_videos(config.FARM_NAMES)
 with open("videos_before_filter.json", "w") as f:
     json.dump(videos_path, f, indent=2)
 
-videos_path = [path for path in videos_path if is_daytime_video(path.get("filename", ""), config.START, config.END)]
+videos_path = [
+    path
+    for path in videos_path
+    if is_daytime_video(path.get("filename", ""), config.START, config.END)
+]
 
 # Sauvegarder videos_path après filtrage
 with open("videos_after_filter.json", "w") as f:
@@ -45,7 +57,7 @@ random.shuffle(videos_path)
 for iteration in range(1000):
     video_path = random.choice(videos_path)
     alias = video_path["alias"]
-    
+
     local_path = download_sftp_video(video_path["filename"], alias)
 
     extract_clips(
@@ -81,7 +93,7 @@ for iteration in range(1000):
                 ["python", "process_clip.py", clip_path],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
 
             # Prendre uniquement la dernière ligne du stdout pour le JSON
@@ -97,6 +109,23 @@ for iteration in range(1000):
             logging.error("Clip processing failed: %s", clip_path)
             logging.error("STDOUT: %s", e.stdout)
             logging.error("STDERR: %s", e.stderr)
+
+            # Clean up any crops that might have been created for this failed clip
+            clip_basename = os.path.splitext(clip)[0]
+            if os.path.exists(config.CROP_FOLDER):
+                for crop_file in os.listdir(config.CROP_FOLDER):
+                    if crop_file.startswith(clip_basename) and crop_file.endswith(
+                        ".mp4"
+                    ):
+                        crop_path = os.path.join(config.CROP_FOLDER, crop_file)
+                        try:
+                            os.unlink(crop_path)
+                            logging.info("Deleted failed crop: %s", crop_path)
+                        except Exception as cleanup_error:
+                            logging.error(
+                                "Failed to delete crop %s: %s", crop_path, cleanup_error
+                            )
+
             continue  # passe au clip suivant
 
         finally:
@@ -104,7 +133,10 @@ for iteration in range(1000):
             remove_video(clip_path)
 
     logging.info("Finished video %s", os.path.basename(local_path))
-    logging.info("Processing complete: %d clips processed, %d clips skipped.",
-             processed_count,len(clips_to_process) - processed_count)
+    logging.info(
+        "Processing complete: %d clips processed, %d clips skipped.",
+        processed_count,
+        len(clips_to_process) - processed_count,
+    )
 
 logging.info("Pipeline finished")
