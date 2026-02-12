@@ -13,9 +13,7 @@ from config import (
     REMOTE_DIR,
     UPLOAD_DIR,
     LOCAL_TMP_DIR,
-    FARM_NAMES,
-    TEST_FOLDER,
-    PRETRAIN_DIR
+    FARM_NAMES
 )
 
 
@@ -183,64 +181,3 @@ def check_if_exists(local_path: str) -> bool:
     except subprocess.CalledProcessError as e:
         logging.error(f"Erreur lors de la vérification sur le cloud : {e}")
         return False
-
-def download_sftp_pretrain_dataset() -> Dict[str, List[str]]:
-    """
-    Télécharge le dataset de prétraining depuis UPLOAD_DIR.
-
-    - Tous les fichiers vidéo présents dans tous les sous-dossiers de UPLOAD_DIR
-      sauf TEST_FOLDER -> dataset/train
-    - Tous les fichiers vidéo dans TEST_FOLDER -> dataset/test
-
-    Returns:
-        Dict[str, List[str]]: {
-            "train": [liste des chemins locaux des videos en train],
-            "test": [liste des chemins locaux des videos en test]
-        }
-    """
-    cmd = ["sftp", "-P", str(SFTP_PORT), f"{SFTP_USER}@{SFTP_HOST}"]
-    proc = subprocess.run(
-        cmd,
-        input=f'ls "{UPLOAD_DIR}"\nexit\n',
-        capture_output=True,
-        text=True
-    )
-
-    folders = [os.path.basename(line.replace("sftp>", "").strip())
-               for line in proc.stdout.splitlines() if line.strip()]
-    folders_dict = {folder: f"{UPLOAD_DIR}/{folder}" for folder in folders}
-    all_videos = list_sftp_videos(folders_dict)
-
-    train_dir = os.path.join(PRETRAIN_DIR, "train")
-    test_dir = os.path.join(PRETRAIN_DIR, "test")
-    os.makedirs(train_dir, exist_ok=True)
-    os.makedirs(test_dir, exist_ok=True)
-
-    train_files = []
-    test_files = []
-    total = len(all_videos)
-
-    for i,video in enumerate(all_videos):
-        alias = video["alias"]
-        filename = video["filename"]
-
-        local_path = os.path.join(
-            test_dir if alias == TEST_FOLDER else train_dir,
-            os.path.basename(filename)
-        )
-        download_sftp_video(filename, alias)
-        
-        if alias == TEST_FOLDER:
-            test_files.append(local_path)
-        else:
-            train_files.append(local_path)
-
-        progress = int((i / total) * 50)
-        bar = "#" * progress + "-" * (50 - progress)
-        print(f"\rTéléchargement: [{bar}] {i}/{total} videos", end="", flush=True)
-    print("\nTéléchargement terminé")
-
-    return {
-        "train": train_files,
-        "test": test_files,
-    }
