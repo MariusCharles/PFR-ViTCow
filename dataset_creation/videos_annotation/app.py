@@ -31,14 +31,17 @@ def index():
 
     # List of behavior names
     behaviors = [
-        "Eating",
+        "Standing",
+        "Standing_up",
+        "Lying",
+        "Lying_down",
+        "Walking",
+        "Feeding",
         "Drinking",
-        "Sleeping",
+        "Mounting",
         "Grooming",
-        "Playing",
-        "Running",
-        "Hiding",
-        "Exploring"
+        "Self-grooming",
+        "Grazing"
     ]
 
     return render_template("index.html", video_name=video_name, behaviors=behaviors)
