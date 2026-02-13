@@ -40,33 +40,12 @@ def list_sftp_videos(folders_dict: Dict[str, str]) -> List[Dict[str, str]]:
             capture_output=True,
             text=True
         )
-
-        subfolders = []
         for line in proc.stdout.splitlines():
             line = line.replace("sftp>", "").strip()
             if not line:
                 continue
-            name = os.path.basename(line)
-            if folder_pattern.match(name):
-                subfolders.append(name)
-
-        # Then, for each DXX subfolder, list videos
-        for subfolder in subfolders:
-            subfolder_path = f"{remote_path.rstrip('/')}/{subfolder}"
-            proc_sub = subprocess.run(
-                cmd,
-                input=f"ls \"{subfolder_path}\"\nexit\n",
-                capture_output=True,
-                text=True
-            )
-
-            for line in proc_sub.stdout.splitlines():
-                line = line.replace("sftp>", "").strip()
-                if not line:
-                    continue
-                if video_pattern.search(line):
-                    all_videos.append({'filename': f"{subfolder}/{os.path.basename(line)}", 'alias': alias})
-
+            if video_pattern.search(line):
+                all_videos.append({'filename': f"{remote_path}/{os.path.basename(line)}", 'alias': alias})
     return all_videos
 
 
@@ -81,14 +60,16 @@ def download_sftp_video(filename: str, alias: str, local_dir: str) -> str:
     Returns:
         str: The local path where the video was downloaded.
     """
-    remote_path = f"{FARM_NAMES[alias]}/{filename}"
-    logging.info("Downloading video %s from %s", filename, remote_path)
+    remote_path = filename
     local_path = os.path.join(local_dir, os.path.basename(filename))
-
     os.makedirs(local_dir, exist_ok=True)
-
-    cmd = f"echo 'get \"{remote_path}\" \"{local_path}\"' | sftp -P {SFTP_PORT} {SFTP_USER}@{SFTP_HOST}"
-    subprocess.run(cmd, shell=True, check=True)
+    
+    proc = subprocess.run(
+        ["sftp", "-P", str(SFTP_PORT), f"{SFTP_USER}@{SFTP_HOST}"],
+        input=f'get "{remote_path}" "{local_path}"\nexit\n',
+        capture_output=True,
+        text=True
+    )
     return local_path
 
 
@@ -106,19 +87,7 @@ def download_sftp_pretrain_dataset() -> Dict[str, List[str]]:
             "test": [liste des chemins locaux des videos en test]
         }
     """
-    cmd = ["sftp", "-P", str(SFTP_PORT), f"{SFTP_USER}@{SFTP_HOST}"]
-    proc = subprocess.run(
-        cmd,
-        input=f'ls "{UPLOAD_DIR}"\nexit\n',
-        capture_output=True,
-        text=True
-    )
-
-    folders = [os.path.basename(line.replace("sftp>", "").strip())
-               for line in proc.stdout.splitlines() if line.strip()]
-    folders_dict = {folder: f"{UPLOAD_DIR}/{folder}" for folder in folders}
-    all_videos = list_sftp_videos(folders_dict)
-
+    all_videos = list_sftp_videos(FARM_NAMES)
     train_dir = os.path.join(PRETRAIN_DIR, "train")
     test_dir = os.path.join(PRETRAIN_DIR, "test")
     os.makedirs(train_dir, exist_ok=True)
@@ -131,16 +100,11 @@ def download_sftp_pretrain_dataset() -> Dict[str, List[str]]:
     for i,video in enumerate(all_videos):
         alias = video["alias"]
         filename = video["filename"]
-
-        
-        
         if alias == TEST_FOLDER:
-            local_path = os.path.join(test_dir,os.path.basename(filename))
-            download_sftp_video(filename, alias, test_dir)
+            local_path = download_sftp_video(filename, alias, test_dir)
             test_files.append(local_path)
         else:
-            local_path = os.path.join(train_dir,os.path.basename(filename))
-            download_sftp_video(filename, alias, train_dir)
+            local_path = download_sftp_video(filename, alias, train_dir)
             train_files.append(local_path)
 
         progress = int((i / total) * 50)
