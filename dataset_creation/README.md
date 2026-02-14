@@ -1,9 +1,9 @@
-# ViTCow Project – SAM3 Video Segmentation Pipeline
+# ViTCow Project - SAM3 Video Segmentation Pipeline
 
-This repository implements a **complete video segmentation and cropping pipeline** built on top of **SAM3 (Segment Anything Model 3)**. It is designed to generate a dataset of short video clips focusing on **individual cows and their behavior**, using videos captured by **cameras installed in cattle stables**.
+This part of the repository implements a **complete video segmentation and cropping pipeline** built on top of **SAM3 (Segment Anything Model 3)**. It is designed to generate a dataset of short video clips focusing on **individual cows and their behavior**, using videos captured by **cameras installed in cattle stables**.
 
 <p align="center">
-  <img src="others/demo.gif" alt="Pipeline demo">
+  <img src="../others/demo.gif" alt="Pipeline demo">
 </p>
 
 The pipeline enables you to:
@@ -12,9 +12,7 @@ The pipeline enables you to:
 - track detected objects across each clip
 - generate per-object cropped output videos
 
-This repository acts as an **orchestration layer** around the official **SAM3** repository. It handles video retrieval from the cloud, data preparation, inference, tracking, output generation, and uploads the resulting crops back to the cloud.
-
-**Coming next:** pretraining a self-supervised video model (**VideoMAE**) on the generated dataset, followed by fine-tuning for **cow behavior classification**.
+This pipeline acts as an **orchestration layer** around the official **SAM3** repository. It handles video retrieval from the cloud, data preparation, inference, tracking, output generation, and uploads the resulting crops back to the cloud.
 
 ---
 
