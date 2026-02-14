@@ -1,5 +1,13 @@
 # README – Prétraining VideoMAE v1
 
+## 0. Installer les dépendances nécessaires
+
+```bash
+sudo apt update
+sudo apt install ffmpeg
+pip install -r requirements.txt
+```
+
 ## 1. Cloner le repository
 
 ```bash
