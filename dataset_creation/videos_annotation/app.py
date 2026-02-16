@@ -10,18 +10,17 @@ CSV_FILE = "annotations.csv"
 def get_next_video():
     videos = sorted(os.listdir(VIDEO_FOLDER))
     
-    # Read annotated videos
     if os.path.exists(CSV_FILE):
         with open(CSV_FILE, newline="") as f:
             annotated = [row[0] for row in csv.reader(f)]
     else:
         annotated = []
 
-    # Pick first video that is not annotated yet
     for v in videos:
         if v not in annotated:
             return v
-    return None  # all videos annotated
+    return None
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -29,7 +28,6 @@ def index():
     if video_name is None:
         return "<h2>All videos have been annotated!</h2>"
 
-    # List of behavior names
     behaviors = [
         "Standing",
         "Standing_up",
@@ -56,12 +54,34 @@ def annotate():
     video_name = request.form["video_name"]
     behavior = request.form["behavior"]
 
-    # Append annotation
     with open(CSV_FILE, "a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([video_name, behavior])
 
     return redirect(url_for("index"))
+
+
+@app.route("/undo", methods=["POST"])
+def undo():
+    if not os.path.exists(CSV_FILE):
+        return redirect(url_for("index"))
+
+    with open(CSV_FILE, newline="") as f:
+        rows = list(csv.reader(f))
+
+    if not rows:
+        return redirect(url_for("index"))
+
+    last_video = rows[-1][0]
+    rows = rows[:-1]
+
+    with open(CSV_FILE, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
+
+    # Important: redirect instead of render_template
+    return redirect(url_for("index"))
+
 
 if __name__ == "__main__":
     app.run(debug=True)
