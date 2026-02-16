@@ -39,9 +39,14 @@ def index():
         "Feeding",
         "Drinking",
         "Mounting",
-        "Grooming",
-        "Self-grooming",
-        "Grazing"
+        "Grooming-standing",
+        "Grooming-lying",
+        "Self-grooming-standing",
+        "Self-grooming-lying",
+        "Scratching-standing",
+        "Scratching-lying",
+        "
+        "Delete"
     ]
 
     return render_template("index.html", video_name=video_name, behaviors=behaviors)
