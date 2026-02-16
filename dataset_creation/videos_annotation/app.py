@@ -45,7 +45,6 @@ def index():
         "Self-grooming-lying",
         "Scratching-standing",
         "Scratching-lying",
-        "
         "Delete"
     ]
 
