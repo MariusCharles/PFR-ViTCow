@@ -18,24 +18,41 @@
       }
 
       .container {
-        background-color: rgba(255, 255, 255, 0.85);
+        background-color: rgba(255, 255, 255, 0);
         padding: 20px;
         border-radius: 10px;
         display: flex;
-        gap: 20px;
-        align-items: flex-start; /* Align buttons with top of video */
+        gap: 25px;
+        align-items: flex-start;
       }
 
+      /* SHORTCUT TABLE */
+      .shortcuts {
+        font-size: 13px;
+        border-collapse: collapse;
+      }
+
+      .shortcuts td {
+        padding: 4px 8px;
+        border-bottom: 1px solid #ccc;
+      }
+
+      .shortcuts td:first-child {
+        font-weight: bold;
+        width: 110px;
+      }
+
+      /* VIDEO SECTION */
       .video-section {
         display: flex;
         flex-direction: column;
-        align-items: flex-start; /* Align title to left of video */
+        align-items: flex-start;
         gap: 8px;
       }
 
       h2 {
         margin: 0;
-        font-size: 18px; /* Smaller title */
+        font-size: 16px;
         font-weight: normal;
       }
 
@@ -44,6 +61,7 @@
         border-radius: 8px;
       }
 
+      /* BUTTONS */
       .buttons {
         display: flex;
         flex-direction: column;
@@ -51,14 +69,15 @@
       }
 
       button {
-        padding: 10px 20px;
-        font-size: 16px;
+        padding: 10px 18px;
+        font-size: 15px;
         cursor: pointer;
         border: none;
         border-radius: 5px;
         background-color: #4caf50;
         color: white;
         transition: background-color 0.2s;
+        text-align: left;
       }
 
       button:hover {
@@ -66,12 +85,48 @@
       }
     </style>
   </head>
+
   <body>
     <div class="container">
+      <!-- LEFT: Shortcut Table -->
+      <div>
+        <table class="shortcuts">
+          <tr>
+            <td>Space</td>
+            <td>Play / Pause</td>
+          </tr>
+          <tr>
+            <td>← / →</td>
+            <td>Jump ±5s</td>
+          </tr>
+          <tr>
+            <td>A</td>
+            <td>Standing</td>
+          </tr>
+          <tr>
+            <td>Z</td>
+            <td>Lying</td>
+          </tr>
+          <tr>
+            <td>E</td>
+            <td>Feeding</td>
+          </tr>
+          <tr>
+            <td>Backspace</td>
+            <td>Delete</td>
+          </tr>
+          <tr>
+            <td>U</td>
+            <td>Undo</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- CENTER: Video -->
       <div class="video-section">
         <h2>{{ video_name.replace('.mp4', '') }}</h2>
 
-        <video width="640" controls>
+        <video id="videoPlayer" width="640" controls autoplay muted>
           <source
             src="{{ url_for('static', filename='videos/h264/' + video_name) }}"
             type="video/mp4"
@@ -79,14 +134,88 @@
         </video>
       </div>
 
-      <form method="POST" action="/annotate" class="buttons">
-        <input type="hidden" name="video_name" value="{{ video_name }}" />
-        {% for behavior in behaviors %}
-        <button type="submit" name="behavior" value="{{ behavior }}">
-          {{ behavior }}
-        </button>
-        {% endfor %}
-      </form>
+      <!-- RIGHT: Buttons -->
+      <div>
+        <form
+          method="POST"
+          action="/annotate"
+          class="buttons"
+          id="annotationForm"
+        >
+          <input type="hidden" name="video_name" value="{{ video_name }}" />
+
+          {% for behavior in behaviors %}
+          <button type="submit" name="behavior" value="{{ behavior }}">
+            {{ behavior }}
+          </button>
+          {% endfor %}
+        </form>
+
+        <!-- Hidden Undo Form -->
+        <form method="POST" action="/undo" id="undoForm"></form>
+      </div>
     </div>
+
+    <script>
+      const video = document.getElementById("videoPlayer");
+
+      document.addEventListener("keydown", function (event) {
+        const key = event.key.toLowerCase();
+
+        // Spacebar → Play/Pause
+        if (event.code === "Space") {
+          event.preventDefault();
+          if (video.paused) {
+            video.play();
+          } else {
+            video.pause();
+          }
+        }
+
+        // Arrow keys → jump 5 seconds
+        if (event.code === "ArrowRight") {
+          video.currentTime += 5;
+        }
+
+        if (event.code === "ArrowLeft") {
+          video.currentTime -= 5;
+        }
+
+        // Behavior shortcuts
+        const shortcuts = {
+          a: "Standing",
+          z: "Lying",
+          e: "Feeding",
+        };
+
+        if (shortcuts[key]) {
+          submitBehavior(shortcuts[key]);
+        }
+
+        // Backspace → Delete
+        if (event.code === "Backspace") {
+          event.preventDefault();
+          submitBehavior("Delete");
+        }
+
+        // U → Undo
+        if (key === "u") {
+          event.preventDefault();
+          document.getElementById("undoForm").submit();
+        }
+      });
+
+      function submitBehavior(behavior) {
+        const form = document.getElementById("annotationForm");
+
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "behavior";
+        input.value = behavior;
+
+        form.appendChild(input);
+        form.submit();
+      }
+    </script>
   </body>
 </html>
