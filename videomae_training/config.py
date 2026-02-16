@@ -19,4 +19,4 @@ FARM_NAMES = {
 PRETRAIN_DIR= "pretraining_dataset"
 
 #Name of the folder (farm) used for test
-TEST_FOLDER="CORDEMAIS" 
+TEST_FOLDER="BUISSON" 
