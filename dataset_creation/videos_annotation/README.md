@@ -30,3 +30,25 @@ Run the following command
 python app.py 
 ```
 Open the html adress given by flask (format similar to : http://127.0.0.1:5000 ) into your web browser (or ctrl+right click)
+
+### 4-New script: manual re-cut by predefined behaviors
+
+Run:
+```
+python recut_app.py
+```
+
+Then open:
+```
+http://127.0.0.1:5001
+```
+
+This script does the following:
+- reads `annotations.csv`
+- keeps only rows with behaviors defined in `TARGET_BEHAVIORS` (in `recut_app.py`)
+- copies matching videos from `static/videos/h264/` to `static/videos/recut_candidates/`
+- shows each video in a GUI with its CSV label
+- lets you set one segment to keep (`start`, `end`)
+- writes the recut output to `static/videos/recut_final/`
+- logs saved segments in `recut_segments.csv`
+- can build `static/videos/recut_final_merged/` with edited videos when available and original videos for all others (plus a `manifest.csv`)

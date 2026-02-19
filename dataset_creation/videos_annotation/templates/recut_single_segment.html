@@ -1,0 +1,468 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Recut Single Segment</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        box-sizing: border-box;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+        height: calc(100vh - 100px);
+      }
+
+      .panel {
+        background: #fff;
+        border-radius: 10px;
+        padding: 14px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        min-width: 0;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      h1 {
+        margin: 0 0 10px 0;
+        font-size: 21px;
+      }
+
+      h2 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+      }
+
+      select,
+      input,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+
+      button {
+        border: none;
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #1d4ed8;
+      }
+
+      .secondary {
+        background: #6b7280;
+      }
+
+      .secondary:hover {
+        background: #4b5563;
+      }
+
+      .msg {
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+
+      .ok {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .err {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .meta {
+        font-size: 13px;
+        color: #374151;
+        margin-bottom: 8px;
+      }
+
+      .timeline-block {
+        margin-top: 12px;
+        padding: 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+      }
+
+      .timeline-values {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .pill {
+        background: #eff6ff;
+        color: #1e3a8a;
+        border-radius: 6px;
+        padding: 6px;
+        font-size: 13px;
+        text-align: center;
+      }
+
+      .slider-wrap {
+        position: relative;
+        height: 34px;
+        margin-bottom: 8px;
+      }
+
+      .slider-wrap input[type="range"] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        pointer-events: none;
+        background: none;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+
+      .slider-wrap input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #2563eb;
+        border: 2px solid white;
+        box-shadow: 0 0 0 1px #1d4ed8;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+
+      .slider-wrap input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #2563eb;
+        border: 2px solid white;
+        box-shadow: 0 0 0 1px #1d4ed8;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+
+      .range-track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 13px;
+        height: 8px;
+        border-radius: 6px;
+        background: #d1d5db;
+      }
+
+      .range-highlight {
+        position: absolute;
+        top: 13px;
+        height: 8px;
+        border-radius: 6px;
+        background: #2563eb;
+      }
+
+      .tiny {
+        font-size: 12px;
+        color: #4b5563;
+      }
+
+      .video-wrap {
+        width: 100%;
+        max-height: calc(100vh - 420px);
+        overflow: hidden;
+      }
+
+      .video-wrap video {
+        width: 100%;
+        height: auto;
+        max-height: calc(100vh - 420px);
+        display: block;
+        border-radius: 8px;
+      }
+
+      .video-select {
+        min-height: 220px;
+        height: calc(100vh - 320px);
+      }
+
+      @media (max-width: 1200px) {
+        .grid {
+          grid-template-columns: 280px minmax(0, 1fr);
+        }
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    {% if message %}
+    <div class="msg ok">{{ message }}</div>
+    {% endif %} {% if error %}
+    <div class="msg err">{{ error }}</div>
+    {% endif %}
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Cibles</h2>
+        <div class="meta">
+          Comportements pré-définis :
+          <strong>{{ target_behaviors | join(", ") }}</strong>
+        </div>
+        <div class="meta">Nouvelles copies réalisées : {{ copied_count }}</div>
+        <div class="meta">Vidéos introuvables dans h264 : {{ missing_count }}</div>
+        <div class="meta">Restantes : {{ pending_count }} / {{ total_count }}</div>
+        <div class="meta">Traitées : {{ done_count }} / {{ total_count }}</div>
+
+        <form method="GET" action="/">
+          <label>Vidéos à traiter</label>
+          <select class="video-select" name="video_name" size="16" onchange="this.form.submit()">
+            {% for item in candidates %}
+            <option
+              value="{{ item.video_name }}"
+              {%
+              if
+              selected_item
+              and
+              item.video_name
+              ==
+              selected_item.video_name
+              %}
+              selected
+              {%
+              endif
+              %}
+            >
+              {{ item.video_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+
+        <form method="POST" action="/build_final" style="margin-top: 10px">
+          <button type="submit">Construire dossier final fusionné</button>
+        </form>
+        <div class="tiny">
+          Build auto dès que restantes = 0. Le bouton permet un build manuel.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h1>Redécoupage manuel</h1>
+
+        {% if selected_item %}
+        <div class="meta"><strong>Vidéo :</strong> {{ selected_item.video_name }}</div>
+        <div class="meta"><strong>Label CSV :</strong> {{ selected_item.label_text }}</div>
+
+        <div class="video-wrap">
+          <video id="videoPlayer" controls>
+            <source
+              src="{{ url_for('static', filename='videos/recut_candidates/' + selected_item.video_name) }}"
+              type="video/mp4"
+            />
+          </video>
+        </div>
+
+        <form method="POST" action="/save_segment" style="margin-top: 10px">
+          <input type="hidden" name="video_name" value="{{ selected_item.video_name }}" />
+          <input type="hidden" name="label_text" value="{{ selected_item.label_text }}" />
+
+          <div class="timeline-block">
+            <div class="timeline-values">
+              <div class="pill">Début: <span id="startText">0.00</span>s</div>
+              <div class="pill">Fin: <span id="endText">0.00</span>s</div>
+              <div class="pill">Durée: <span id="durationText">0.00</span>s</div>
+            </div>
+
+            <div class="slider-wrap">
+              <div class="range-track"></div>
+              <div id="rangeHighlight" class="range-highlight"></div>
+              <input type="range" id="startRange" min="0" max="0" step="0.01" value="0" />
+              <input type="range" id="endRange" min="0" max="0" step="0.01" value="0" />
+            </div>
+
+            <div class="tiny">Glisse les deux poignées pour choisir précisément la portion à garder.</div>
+          </div>
+
+          <input type="hidden" id="startInput" name="start" value="{{ initial_start }}" />
+          <input type="hidden" id="endInput" name="end" value="{{ initial_end }}" />
+
+          <button type="button" class="secondary" onclick="setStartFromCurrent()">
+            Début = temps courant
+          </button>
+          <button type="button" class="secondary" onclick="setEndFromCurrent()">
+            Fin = temps courant
+          </button>
+          <button type="submit">Enregistrer le découpage</button>
+        </form>
+
+        {% if selected_segment %}
+        <div class="meta"><strong>Découpe enregistrée :</strong></div>
+        <div class="meta">Début: {{ selected_segment.start }} s</div>
+        <div class="meta">Fin: {{ selected_segment.end }} s</div>
+        <div class="meta">Sortie: static/videos/recut_final/{{ selected_segment.output_file }}</div>
+        {% endif %} {% else %}
+        <div class="meta">Plus aucune vidéo à traiter pour les comportements ciblés.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <script>
+      const video = document.getElementById("videoPlayer");
+      const startInput = document.getElementById("startInput");
+      const endInput = document.getElementById("endInput");
+      const startRange = document.getElementById("startRange");
+      const endRange = document.getElementById("endRange");
+      const rangeHighlight = document.getElementById("rangeHighlight");
+      const startText = document.getElementById("startText");
+      const endText = document.getElementById("endText");
+      const durationText = document.getElementById("durationText");
+
+      function formatSec(value) {
+        return Number(value).toFixed(2);
+      }
+
+      function clampSegments() {
+        if (!startRange || !endRange) return;
+        let s = Number(startRange.value);
+        let e = Number(endRange.value);
+        if (s > e) {
+          const t = s;
+          s = e;
+          e = t;
+        }
+        startRange.value = s;
+        endRange.value = e;
+        startInput.value = formatSec(s);
+        endInput.value = formatSec(e);
+        startText.textContent = formatSec(s);
+        endText.textContent = formatSec(e);
+        durationText.textContent = formatSec(Math.max(0, e - s));
+
+        const max = Number(startRange.max) || 1;
+        const leftPct = (s / max) * 100;
+        const widthPct = ((e - s) / max) * 100;
+        rangeHighlight.style.left = leftPct + "%";
+        rangeHighlight.style.width = widthPct + "%";
+      }
+
+      function syncRangesFromInputs() {
+        if (!startRange || !endRange) return;
+        const max = Number(startRange.max) || 0;
+        const s = Math.max(0, Math.min(max, Number(startInput.value || 0)));
+        const e = Math.max(0, Math.min(max, Number(endInput.value || 0)));
+        startRange.value = s;
+        endRange.value = e;
+        clampSegments();
+      }
+
+      function setStartFromCurrent() {
+        if (!video || !startInput || !startRange) return;
+        startInput.value = video.currentTime.toFixed(2);
+        syncRangesFromInputs();
+      }
+
+      function setEndFromCurrent() {
+        if (!video || !endInput || !endRange) return;
+        endInput.value = video.currentTime.toFixed(2);
+        syncRangesFromInputs();
+      }
+
+      function currentStart() {
+        return Number(startInput?.value || 0);
+      }
+
+      function currentEnd() {
+        return Number(endInput?.value || 0);
+      }
+
+      function jumpToStartIfOutsideRange() {
+        if (!video) return;
+        const s = currentStart();
+        const e = currentEnd();
+        if (e <= s) return;
+        if (video.currentTime < s || video.currentTime > e) {
+          video.currentTime = s;
+        }
+      }
+
+      function previewFromStart() {
+        if (!video) return;
+        const s = currentStart();
+        const e = currentEnd();
+        if (e <= s) return;
+        video.currentTime = s;
+        video.play();
+      }
+
+      if (video && startRange && endRange) {
+        video.addEventListener("loadedmetadata", () => {
+          const duration = Number(video.duration || 0).toFixed(2);
+          startRange.max = duration;
+          endRange.max = duration;
+
+          let s = Number(startInput.value || 0);
+          let e = Number(endInput.value || 0);
+          if (e <= 0 || e > Number(duration)) {
+            e = Number(duration);
+          }
+          if (s < 0) {
+            s = 0;
+          }
+
+          startRange.value = s;
+          endRange.value = e;
+          clampSegments();
+          jumpToStartIfOutsideRange();
+          previewFromStart();
+        });
+
+        startRange.addEventListener("input", () => {
+          clampSegments();
+          jumpToStartIfOutsideRange();
+        });
+        endRange.addEventListener("input", () => {
+          clampSegments();
+          jumpToStartIfOutsideRange();
+        });
+        startInput.addEventListener("change", () => {
+          syncRangesFromInputs();
+          jumpToStartIfOutsideRange();
+        });
+        endInput.addEventListener("change", () => {
+          syncRangesFromInputs();
+          jumpToStartIfOutsideRange();
+        });
+
+        video.addEventListener("play", jumpToStartIfOutsideRange);
+        video.addEventListener("timeupdate", () => {
+          const s = currentStart();
+          const e = currentEnd();
+          if (e <= s) return;
+          if (video.currentTime >= e) {
+            video.currentTime = s;
+            video.play();
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
