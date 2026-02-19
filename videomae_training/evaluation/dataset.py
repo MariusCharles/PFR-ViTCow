@@ -1,48 +1,41 @@
-from torch.utils.data import Dataset
-from VideoMAE.kinetics import VideoClsDataset
-from config import NUM_FRAMES_PER_CLIP, FRAME_STEP, CROP_SIZE
-
-def create_test_dataset(anno_path:str = "/teamspace/studios/this_studio/PFR-ViTCow/pretraining_dataset/test.csv",
-                        test_num_segment:int = 2,
-                        test_num_crop:int = 2,
-                        num_segment:int = 1,
-                        num_crop:int = 1
-                        ) -> Dataset:
-        """
-        Crée un dataset de test compatible avec VideoMAE.
-        """
-        dataset = VideoClsDataset(
-            anno_path=anno_path,
-            data_path='/',
-            mode="test",
-            clip_len=NUM_FRAMES_PER_CLIP,
-            frame_sample_rate=FRAME_STEP, ##Fais à l'avance, donc peut-être 1 en fait
-            num_segment=num_segment,
-            test_num_segment=test_num_segment,
-            test_num_crop=test_num_crop,
-            num_crop=num_crop,
-            keep_aspect_ratio=True,
-            crop_size=CROP_SIZE,
-            short_side_size=CROP_SIZE,
-            )
-        return dataset
-
 import os
 import numpy as np
-import decord
 import warnings
 from decord import VideoReader, cpu
 from torch.utils.data import Dataset
 import video_transforms as video_transforms 
 import volume_transforms as volume_transforms
 import pandas as pd
+from typing import List, Tuple, Dict, Optional, Union
+
+def encode_labels(
+    labels: List[Union[int, str]]
+) -> Tuple[List[int], Optional[Dict[str, int]]]:
+    """
+    Encode labels to integers if needed.
+
+    Args:
+        labels: List of int (already encoded) or str labels.
+
+    Returns:
+        encoded_labels: List[int]
+        label_to_idx: Mapping dict if encoding was applied, else None.
+    """
+    arr = np.array(labels)
+
+    if np.issubdtype(arr.dtype, np.integer):
+        return list(labels), None
+
+    unique = sorted(set(labels))
+    mapping = {l: i for i, l in enumerate(unique)}
+    return [mapping[l] for l in labels], mapping
 
 class TestingVideoClsDataset(Dataset):
     """
     Video dataset for inference / embedding extraction with VideoMAE.
 
     This dataset:
-    - Loads full videos with Decord
+    - Loads full videos
     - Applies temporal slicing according to clip_len and test_num_segment
     - Applies spatial multi-crop according to crop_size and test_num_crop
     - Resizes final output to output_size x output_size
@@ -61,6 +54,7 @@ class TestingVideoClsDataset(Dataset):
         test_num_segment:int=1,
         test_num_crop:int=1,
         output_size:int=224,
+        sep:str=' '
     ):
         """
         Args:
@@ -73,6 +67,7 @@ class TestingVideoClsDataset(Dataset):
             output_size (int): Final spatial size fed to VideoMAE.
         """
         self.anno_path = anno_path
+        self.sep = sep
         self.clip_len = clip_len
         self.frame_sample_rate = frame_sample_rate
         self.crop_size = crop_size
@@ -83,9 +78,10 @@ class TestingVideoClsDataset(Dataset):
         if VideoReader is None:
             raise ImportError("decord required")
 
-        cleaned = pd.read_csv(self.anno_path, header=None, delimiter=' ')
+        cleaned = pd.read_csv(self.anno_path, header=None, delimiter=self.sep)
         self.dataset_samples = list(cleaned.values[:, 0])
-        self.label_array = list(cleaned.values[:, 1])
+        raw_labels = list(cleaned.values[:, 1])
+        self.label_array, self.label_mapping = encode_labels(raw_labels)
 
         # Final resize to match VideoMAE input resolution
         self.data_resize = video_transforms.Resize(
@@ -117,7 +113,7 @@ class TestingVideoClsDataset(Dataset):
         Returns:
             tensor (C, T, H, W),
             label,
-            video_id,
+            video_path,
             temporal_segment_index,
             spatial_crop_index
         """
@@ -163,7 +159,7 @@ class TestingVideoClsDataset(Dataset):
         buffer = self.data_transform(buffer)
         return (buffer, 
                 self.test_label_array[index], 
-                sample.split("/")[-1].split(".")[0],
+                sample,
                 chunk_nb, 
                 split_nb)
 
