@@ -46,5 +46,24 @@ To execute a zero shot evaluation (KNN-like on the embeddings directly from the 
 
 ```bash
 export PYTHONPATH=$(pwd)/VideoMAE:$(pwd)
-python -m evaluation.zero_shot
+python -m evaluation.zero_shot [--compute_embeddings]
 ```
+- Use `--compute_embeddings` to extract embeddings.
+- Extraction can be time-consuming.
+- Embeddings are saved as a `.json` file in `--output_dir`.
+- If the `.json` already exists and neither the checkpoint nor dataset changed, recomputation is unnecessary.
+
+### Architecture Consistency (Critical)
+
+The following arguments **must match** the pretrained checkpoint configuration:
+
+- `--model_name`
+- `--patch_size`
+- `--num_frames`
+- `--img_size`
+
+Any mismatch will prevent correct weight loading or produce invalid embeddings.
+
+### Evaluation parameters
+- `--k` defines the Hit@K values (default: `1 2 3 5 10`).
+- Results are saved as a `.csv` file in `--output_dir`.
