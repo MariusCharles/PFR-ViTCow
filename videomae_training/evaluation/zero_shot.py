@@ -1,6 +1,13 @@
-##export PYTHONPATH=$(pwd)/VideoMAE:$(pwd)
-##python -m evaluation.zero_shot
-##Citer Videomae = partie du code = run_class_finetuning.py
+"""
+This project reuses and adapts the `VideoClsDataset` class originally introduced
+in the official VideoMAE implementation (see kinetics.py).
+
+Tong, Z., Song, Y., Wang, J., & Wang, L. (2022).
+VideoMAE: Masked Autoencoders are Data-Efficient Learners for Self-Supervised Video Pre-Training.
+Advances in Neural Information Processing Systems (NeurIPS 2022).
+arXiv preprint arXiv:2203.12602.
+
+"""
 
 from .dataset import TestingVideoClsDataset
 import torch
