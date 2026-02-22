@@ -1,3 +1,14 @@
+"""
+This project reuses and adapts the `VideoClsDataset` class originally introduced
+in the official VideoMAE implementation (see kinetics.py).
+
+Tong, Z., Song, Y., Wang, J., & Wang, L. (2022).
+VideoMAE: Masked Autoencoders are Data-Efficient Learners for Self-Supervised Video Pre-Training.
+Advances in Neural Information Processing Systems (NeurIPS 2022).
+arXiv preprint arXiv:2203.12602.
+
+"""
+
 import os
 import numpy as np
 import warnings
