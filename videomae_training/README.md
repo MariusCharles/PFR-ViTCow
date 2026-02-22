@@ -39,3 +39,12 @@ Typical execution:
 ```bash
 ./pretraining_scripts/pretrain_template.sh
 ```
+
+## 4. Evaluate Pretraining
+Evaluation code is in the evaluation folder. 
+To execute a zero shot evaluation (KNN-like on the embeddings directly from the pretraining model) : 
+
+```bash
+export PYTHONPATH=$(pwd)/VideoMAE:$(pwd)
+python -m evaluation.zero_shot
+```
