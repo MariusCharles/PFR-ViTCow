@@ -219,7 +219,7 @@ if __name__ == "__main__":
     
     # For emebedding extraction : 
     ## Dataset parameters
-    parser.add_argument("--anno_path", type=str, default="/teamspace/studios/this_studio/PFR-ViTCow/videomae_training/pretraining_dataset/test.csv")
+    parser.add_argument("--anno_path", type=str, default="./pretraining_dataset/test.csv")
     parser.add_argument("--sep", type=str, default=",", help="Separator for the annotation csv")
     parser.add_argument("--test_num_segment", type=int, default="1", help="Number of temporal segments")
     parser.add_argument("--frame_sample_rate", type=int, default="1", help="Temporal stride between frames")
@@ -227,8 +227,8 @@ if __name__ == "__main__":
     parser.add_argument("--crop_size", type=int, default="224", help="Spatial crop size before final resize")
 
     ## Model and dataloader parameters
-    parser.add_argument("--checkpoint_path", type=str, default="/teamspace/studios/this_studio/PFR-ViTCow/videomae_training/results/testing_1GPU_1EPOCH/checkpoint-2.pth")
-    parser.add_argument("--output_dir", type=str, default="/teamspace/studios/this_studio/PFR-ViTCow/videomae_training/zero_shot_results")
+    parser.add_argument("--checkpoint_path", type=str, default="./results/final_pretrain/checkpoint-best.pth")
+    parser.add_argument("--output_dir", type=str, default="./zero_shot_results")
     parser.add_argument("--experiment_name", type=str, default=None)
     parser.add_argument("--model_name", type=str, default="pretrain_videomae_base_patch16_224")
     parser.add_argument("--patch_size", type=int, default=16)
