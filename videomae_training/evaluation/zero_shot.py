@@ -220,7 +220,7 @@ if __name__ == "__main__":
     # For emebedding extraction : 
     ## Dataset parameters
     parser.add_argument("--anno_path", type=str, default="./pretraining_dataset/test.csv")
-    parser.add_argument("--sep", type=str, default=",", help="Separator for the annotation csv")
+    parser.add_argument("--sep", type=str, default=";", help="Separator for the annotation csv")
     parser.add_argument("--test_num_segment", type=int, default="1", help="Number of temporal segments")
     parser.add_argument("--frame_sample_rate", type=int, default="1", help="Temporal stride between frames")
     parser.add_argument("--test_num_crop", type=int, default="1", help="Number of spatial crops")
