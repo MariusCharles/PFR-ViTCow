@@ -5,7 +5,7 @@
 ```bash
 sudo apt update
 sudo apt install ffmpeg
-pip install -r requirements.txt
+pip install -r requirements_videomae.txt
 ```
 
 ## 1. Clone the Repository
