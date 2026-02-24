@@ -5,6 +5,7 @@
 ```bash
 sudo apt update
 sudo apt install ffmpeg
+sudo apt install -y libgl1
 pip install -r requirements_videomae.txt
 ```
 
