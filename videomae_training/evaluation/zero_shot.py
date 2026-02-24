@@ -21,6 +21,7 @@ import json
 import os
 import argparse
 from tqdm import tqdm
+from config import TEST_FOLDER
 
 def load_videomae_encoder(checkpoint_path: str, model_name: str, device: str):
     """
@@ -49,19 +50,52 @@ def make_no_mask(batch_size, model, device):
 
     return torch.zeros(batch_size, num_patches, dtype=torch.bool, device=device)
 
-def find_neighbours(all_representations: List[Tuple[np.ndarray, int]], distance_type: str = "euclidean") -> Dict[int, Dict]:
-    embeddings = np.stack([r[0] for r in all_representations]) 
-    labels = np.array([r[1] for r in all_representations])
+def find_neighbours(
+    all_representations: List[Tuple[np.ndarray, int, str]], #(embedding, label, path)
+    test_folder: str,
+    distance_type: str = "euclidean"
+    )-> Dict[int, Dict]:
+    """
+    Construit le dictionnaire des voisins en utilisant le test comme query et le train comme index. 
+    Les distances sont calculées uniquement entre les embeddings du
+    query set et ceux de l'index set.
+    
+    Args:
+        all_representations: Liste de tuples (embedding, label, path).
+        test_folder: Nom du folder utilisé comme ensemble de test (query).
+        distance_type: Métrique utilisée par `scipy.spatial.distance.cdist` (ex: "euclidean", "cosine").
 
-    dists = cdist(embeddings, embeddings, metric=distance_type)
+    Returns:
+        Dict[int, Dict]:
+            Dictionnaire indexé par id de requête (0..N_query-1) :
+                {
+                    i: {
+                        "label": int,
+                        "neighbours": List[int]  # labels triés par distance croissante
+                    }
+                }
+            Format compatible avec `hit_at_k`.
+    """
+    # Index = train, query = test
+    index_data = [r for r in all_representations if test_folder not in r[2]]
+    query_data = [r for r in all_representations if test_folder in r[2]]
+
+    index_embeddings = np.stack([r[0] for r in index_data])
+    index_labels = np.array([r[1] for r in index_data])
+
+    query_embeddings = np.stack([r[0] for r in query_data])
+    query_labels = np.array([r[1] for r in query_data])
+
+    # distances computed between test and train
+    dists = cdist(query_embeddings, index_embeddings, metric=distance_type)
 
     all_neighbours = {}
-    for i in range(len(embeddings)):
-        order = np.argsort(dists[i]) 
-        order = order[order != i]     # retire soi-même
+
+    for i in range(len(query_embeddings)):
+        order = np.argsort(dists[i])
         all_neighbours[i] = {
-            "label": labels[i],
-            "neighbours": labels[order].tolist()
+            "label": query_labels[i],
+            "neighbours": index_labels[order].tolist()
         }
 
     return all_neighbours
@@ -115,7 +149,7 @@ def compute_and_save_embeddings(
         stacked = np.stack(data["embeddings"], axis=0)
         video_embedding = stacked.mean(axis=0)  # inter-clip average pooling
 
-        all_representations.append((video_embedding, data["label"]))
+        all_representations.append((video_embedding, data["label"], path))
 
         all_entries.append({
             "path": path,
@@ -136,7 +170,7 @@ def load_embeddings(json_path: str) -> List[Tuple[np.ndarray, int]]:
         data = json.load(f)
 
     all_representations = [
-        (np.array(entry["embedding"], dtype=np.float32), int(entry["encoded_label"]))
+        (np.array(entry["embedding"], dtype=np.float32), int(entry["encoded_label"]), str(entry["path"]))
         for entry in data
     ]
 
@@ -194,10 +228,10 @@ def main(args):
     else:
         all_representations = load_embeddings(output_json)
 
-    all_data = find_neighbours(all_representations, distance_type="euclidean")
+    all_data = find_neighbours(all_representations, test_folder=TEST_FOLDER, distance_type="euclidean")
 
     results = []
-    print("Computing Hit@k results")
+    print(f"Computing Hit@k results with {TEST_FOLDER} as test")
     for k in args.k:
         micro_value = hit_at_k(all_data, k, average="micro")
         macro_value = hit_at_k(all_data, k, average="macro")
