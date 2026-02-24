@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Dict, Optional, Sequence
+from typing import List, Dict, Optional, Sequence, Literal
 from sklearn.metrics import (
     average_precision_score,
     accuracy_score,
@@ -10,7 +10,8 @@ from sklearn.metrics import (
 
 def hit_at_k(
     all_data: Dict[int, Dict[str, List[int]]],
-    k: int
+    k: int,
+    average: Literal["micro", "macro"] = "micro"
 ) -> float:
     """
     Calcule Hit@k pour un problème de retrieval.
@@ -25,18 +26,39 @@ def hit_at_k(
             all_data[i]["neighbours"] : List[int]
                 Labels des voisins triés par proximité croissante.
         k: nombre de voisins considérés.
-
+        average: 
+            - "micro" : moyenne globale sur toutes les requêtes.
+            - "macro" : moyenne des Hit@K calculés par classe.
     Returns:
-        float: Hit@K moyen sur l'ensemble des requêtes.
+        float: Hit@K agrégé selon le mode choisi.
     """
-    hits = []
+    if average not in {"micro", "macro"}:
+        raise ValueError("average must be 'micro' or 'macro'")
 
+    # MICRO
+    if average == "micro":
+
+        hits = []
+        for sample in all_data.values():
+            y = sample["label"]
+            neighbours = sample["neighbours"][:k]
+            hits.append(int(y in neighbours))
+    
+        return float(np.mean(hits))
+
+    # MACRO
+    class_hits = {}
     for sample in all_data.values():
         y = sample["label"]
         neighbours = sample["neighbours"][:k]
-        hits.append(int(y in neighbours))
+        hit = int(y in neighbours)
 
-    return float(np.mean(hits))
+        if y not in class_hits:
+            class_hits[y] = []
+        class_hits[y].append(hit)
+
+    per_class_scores = [np.mean(hits) for hits in class_hits.values()]
+    return float(np.mean(per_class_scores))
 
 def classification_metrics(
     y_true: Sequence[int],

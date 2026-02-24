@@ -197,16 +197,17 @@ def main(args):
     all_data = find_neighbours(all_representations, distance_type="euclidean")
 
     results = []
-
+    print("Computing Hit@k results")
     for k in args.k:
-        value = hit_at_k(all_data, k)
-        print(f"Hit@{k}: {value}")
-        results.append((k, value))
+        micro_value = hit_at_k(all_data, k, average="micro")
+        macro_value = hit_at_k(all_data, k, average="macro")
+        print(f"Hit@{k}: micro = {micro_value}, macro = {macro_value}")
+        results.append((k, micro_value, macro_value))
 
     with open(output_csv, "w") as f:
-        f.write("k,hit_at_k\n")
-        for k, value in results:
-            f.write(f"{k},{value}\n")
+        f.write("k,hit_at_k_micro,hit_at_k_macro\n")
+        for k, micro_value, macro_value in results:
+            f.write(f"{k},{micro_value},{macro_value}\n")
 
     print(f"Saved metrics to {output_csv}")
 
