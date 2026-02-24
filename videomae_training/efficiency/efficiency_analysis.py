@@ -33,8 +33,8 @@ from evaluation.metrics import classification_metrics
 EMBEDDINGS_FILE = "all_embeddings.json"
 REMOTE_EMBEDDINGS = f"{UPLOAD_DIR}/zero_shot_results/final_pretrain/all_embeddings.json"
 EVALUATION_DIR = "evaluation"
-LOCAL_SPLITS = "local_splits"
-RESULTS_DIR = "results"
+LOCAL_SPLITS = "local_splits_allfarms"   # "local_splits" pour domain shift, "local_splits_allfarms" sans
+RESULTS_DIR = "results_allfarms"    # "results" pour domain shift, "results_allfarms" sans
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 NUM_CLASSES = 8  # Will be computed from annotations.csv
@@ -42,7 +42,7 @@ EMBEDDING_DIM = 1536  # VideoMAE embeddings dimension
 
 # Training params
 BATCH_SIZE = 32
-NUM_EPOCHS = 300
+NUM_EPOCHS = 500
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 1e-4
 
@@ -227,7 +227,7 @@ def train_linear_classifier(
     y_test: np.ndarray,
     num_classes: int,
     embedding_dim: int
-) -> Tuple[torch.nn.Module, Dict]:
+) -> Tuple[torch.nn.Module, Dict, Dict]:
     """
     Train linear classifier on embeddings.
     
@@ -266,8 +266,16 @@ def train_linear_classifier(
     print(f"Training for {NUM_EPOCHS} epochs...")
     model.train()
     
+    history = {
+        "epoch": [],
+        "train_loss": [],
+        "train_acc": []
+    }
+
     for epoch in range(NUM_EPOCHS):
         running_loss = 0.0
+        correct = 0
+        total = 0
         
         for X_batch, y_batch in train_loader:
             X_batch = X_batch.to(DEVICE)
@@ -280,10 +288,20 @@ def train_linear_classifier(
             optimizer.step()
             
             running_loss += loss.item() * X_batch.size(0)
+            preds = outputs.argmax(dim=1)
+            correct += (preds == y_batch).sum().item()
+            total += y_batch.size(0)
         
         avg_loss = running_loss / len(train_dataset)
+        train_acc = correct / max(1, total)
+        history["epoch"].append(epoch + 1)
+        history["train_loss"].append(avg_loss)
+        history["train_acc"].append(train_acc)
         if (epoch + 1) % max(1, NUM_EPOCHS // 5) == 0:
-            print(f"  Epoch {epoch+1}/{NUM_EPOCHS}, Loss: {avg_loss:.4f}")
+            print(
+                f"  Epoch {epoch+1}/{NUM_EPOCHS}, Loss: {avg_loss:.4f}, "
+                f"Train Acc: {train_acc:.4f}"
+            )
     
     # Evaluate
     print("Evaluating on test set...")
@@ -308,7 +326,7 @@ def train_linear_classifier(
         'y_pred': y_pred,
         'y_scores': y_scores,
         'y_test': y_test
-    }
+    }, history
 
 
 def compute_metrics(
@@ -356,6 +374,38 @@ def save_results(results: Dict, output_path: str) -> None:
         json.dump(results, f, indent=2)
     
     print(f"✓ Results saved to: {output_path}")
+
+
+def save_training_curves(history: Dict, output_dir: str, dataset_name: str) -> None:
+    """Save training curves to JSON and optionally a PNG plot."""
+    os.makedirs(output_dir, exist_ok=True)
+
+    json_path = os.path.join(output_dir, f"{dataset_name}_training_curves.json")
+    with open(json_path, "w") as f:
+        json.dump(history, f, indent=2)
+    print(f"✓ Training curves saved to: {json_path}")
+
+    try:
+        import matplotlib.pyplot as plt
+
+        fig, ax1 = plt.subplots(figsize=(8, 4))
+        ax1.plot(history["epoch"], history["train_loss"], label="Train Loss", color="tab:blue")
+        ax1.set_xlabel("Epoch")
+        ax1.set_ylabel("Loss", color="tab:blue")
+        ax1.tick_params(axis="y", labelcolor="tab:blue")
+
+        ax2 = ax1.twinx()
+        ax2.plot(history["epoch"], history["train_acc"], label="Train Acc", color="tab:orange")
+        ax2.set_ylabel("Accuracy", color="tab:orange")
+        ax2.tick_params(axis="y", labelcolor="tab:orange")
+
+        fig.tight_layout()
+        png_path = os.path.join(output_dir, f"{dataset_name}_training_curves.png")
+        plt.savefig(png_path, dpi=150)
+        plt.close(fig)
+        print(f"✓ Training curves plot saved to: {png_path}")
+    except Exception as e:
+        print(f"Warning: Could not generate training curves plot: {e}")
 
 
 def upload_results_to_sftp(local_path: str, dataset_name: str) -> None:
@@ -461,7 +511,7 @@ def main():
     num_classes = len(label_info['label_names'])
     print(f"  Num classes: {num_classes}")
     
-    model, predictions = train_linear_classifier(
+    model, predictions, history = train_linear_classifier(
         X_train, y_train, X_test, y_test,
         num_classes=num_classes,
         embedding_dim=EMBEDDING_DIM
@@ -484,6 +534,7 @@ def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
     local_result_path = os.path.join(RESULTS_DIR, f"{args.dataset}.json")
     save_results(metrics, local_result_path)
+    save_training_curves(history, RESULTS_DIR, args.dataset)
     
     # Upload to SFTP
     upload_results_to_sftp(local_result_path, args.dataset)
