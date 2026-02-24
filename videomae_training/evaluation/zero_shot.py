@@ -22,6 +22,8 @@ import os
 import argparse
 from tqdm import tqdm
 from config import TEST_FOLDER, FARM_NAMES
+from collections import defaultdict
+import random
 
 def load_videomae_encoder(checkpoint_path: str, model_name: str, device: str):
     """
@@ -50,6 +52,80 @@ def make_no_mask(batch_size, model, device):
 
     return torch.zeros(batch_size, num_patches, dtype=torch.bool, device=device)
 
+from collections import defaultdict
+import random
+import numpy as np
+
+
+def split_intra_domain_stratified(
+    all_representations,
+    ratio,
+    domain_names
+    ):
+    """
+    Stratified intra-domain split.
+
+    For each domain and label:
+        - at least one sample in query
+        - at least (1 - ratio) of total label occurrences in index
+    """
+    index_data = []
+    query_data = []
+
+    # Group by domain
+    domains = {name: [] for name in domain_names}
+    for r in all_representations:
+        path = r[2]
+        matched = False
+        for domain_name in domain_names:
+            if domain_name in path:
+                domains[domain_name].append(r)
+                matched = True
+                break
+        if not matched:
+            raise ValueError(f"No declared domain found in path: {path}")
+
+    # Global label counts
+    total_per_label = defaultdict(int)
+    for r in all_representations:
+        total_per_label[r[1]] += 1
+
+    test_per_label = defaultdict(int)
+
+    # Stratified split
+    for samples in domains.values():
+        if not samples:
+            continue
+
+        by_label = defaultdict(list)
+        for r in samples:
+            by_label[r[1]].append(r)
+
+        for label, label_samples in by_label.items():
+            random.shuffle(label_samples)
+
+            n_total_label = total_per_label[label]
+            n_domain_label = len(label_samples)
+
+            n_test = max(1, int(n_domain_label * ratio))
+
+            max_allowed_test_global = n_total_label - int(np.ceil((1 - ratio) * n_total_label))
+            remaining_capacity = max_allowed_test_global - test_per_label[label]
+            n_test = min(n_test, max(0, remaining_capacity))
+
+            if test_per_label[label] == 0 and n_test == 0:
+                n_test = 1
+
+            test_samples = label_samples[:n_test]
+            train_samples = label_samples[n_test:]
+
+            query_data.extend(test_samples)
+            index_data.extend(train_samples)
+
+            test_per_label[label] += len(test_samples)
+
+    return index_data, query_data
+    
 def find_neighbours(
     all_representations: List[Tuple[np.ndarray, int, str]], #(embedding, label, path)
     test_folder: str,
@@ -94,30 +170,7 @@ def find_neighbours(
         query_data = [r for r in all_representations if test_folder in r[2]]
     else:
         # Query et index en fonction du ratio par domaine
-        domains = {name: [] for name in FARM_NAMES.keys()}
-        for r in all_representations:
-            path = r[2]
-            matched = False
-    
-            for domain_name in FARM_NAMES.keys():
-                if domain_name in path:
-                    domains[domain_name].append(r)
-                    matched = True
-                    break
-            if not matched:
-                raise ValueError(f"No declared domain found in path: {path}")
-    
-        index_data = []
-        query_data = []
-        for domain_name, samples in domains.items():
-            if len(samples) == 0:
-                continue
-    
-            n = len(samples)
-            split = max(1, int(n * ratio))
-    
-            query_data.extend(samples[:split])
-            index_data.extend(samples[split:])
+        index_data, query_data = split_intra_domain_stratified(all_representations, ratio, FARM_NAMES.keys())
 
     if len(query_data) == 0 or len(index_data) == 0:
         raise ValueError("Query or index set is empty.")
