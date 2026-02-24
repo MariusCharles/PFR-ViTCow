@@ -21,7 +21,7 @@ import json
 import os
 import argparse
 from tqdm import tqdm
-from config import TEST_FOLDER
+from config import TEST_FOLDER, FARM_NAMES
 
 def load_videomae_encoder(checkpoint_path: str, model_name: str, device: str):
     """
@@ -53,18 +53,30 @@ def make_no_mask(batch_size, model, device):
 def find_neighbours(
     all_representations: List[Tuple[np.ndarray, int, str]], #(embedding, label, path)
     test_folder: str,
-    distance_type: str = "euclidean"
+    distance_type: str = "euclidean",
+    without_domain_shift: bool = False,
+    ratio=1/5,
     )-> Dict[int, Dict]:
     """
-    Construit le dictionnaire des voisins en utilisant le test comme query et le train comme index. 
-    Les distances sont calculées uniquement entre les embeddings du
-    query set et ceux de l'index set.
+    Construit le dictionnaire des voisins pour une évaluation retrieval.
     
+    Modes :
+        - without_domain_shift = False :
+            Les échantillons dont le chemin contient `test_folder` sont utilisés comme 
+            ensemble de requêtes (query set), les autres comme ensemble d’index.
+        - without_domain_shift = True :
+            Les données sont d’abord regroupées par domaine (via FARM_NAMES). 
+            Pour chaque domaine, une fraction `ratio` des échantillons est 
+            utilisée comme requêtes, le reste constituant l’index (split intra-domaine).
+
     Args:
         all_representations: Liste de tuples (embedding, label, path).
         test_folder: Nom du folder utilisé comme ensemble de test (query).
         distance_type: Métrique utilisée par `scipy.spatial.distance.cdist` (ex: "euclidean", "cosine").
-
+        without_domain_shift: Active le split intra-domaine.
+        ratio: Proportion (0 < ratio < 1) d’échantillons par domaine utilisée 
+               comme requêtes lorsque without_domain_shift=True.
+        
     Returns:
         Dict[int, Dict]:
             Dictionnaire indexé par id de requête (0..N_query-1) :
@@ -76,9 +88,39 @@ def find_neighbours(
                 }
             Format compatible avec `hit_at_k`.
     """
-    # Index = train, query = test
-    index_data = [r for r in all_representations if test_folder not in r[2]]
-    query_data = [r for r in all_representations if test_folder in r[2]]
+    if not without_domain_shift:
+        # Query = test_folder, Index = everything else
+        index_data = [r for r in all_representations if test_folder not in r[2]]
+        query_data = [r for r in all_representations if test_folder in r[2]]
+    else:
+        # Query et index en fonction du ratio par domaine
+        domains = {name: [] for name in FARM_NAMES.keys()}
+        for r in all_representations:
+            path = r[2]
+            matched = False
+    
+            for domain_name in FARM_NAMES.keys():
+                if domain_name in path:
+                    domains[domain_name].append(r)
+                    matched = True
+                    break
+            if not matched:
+                raise ValueError(f"No declared domain found in path: {path}")
+    
+        index_data = []
+        query_data = []
+        for domain_name, samples in domains.items():
+            if len(samples) == 0:
+                continue
+    
+            n = len(samples)
+            split = max(1, int(n * ratio))
+    
+            query_data.extend(samples[:split])
+            index_data.extend(samples[split:])
+
+    if len(query_data) == 0 or len(index_data) == 0:
+        raise ValueError("Query or index set is empty.")
 
     index_embeddings = np.stack([r[0] for r in index_data])
     index_labels = np.array([r[1] for r in index_data])
@@ -202,7 +244,8 @@ def main(args):
     os.makedirs(exp_dir, exist_ok=True)
 
     output_json = os.path.join(exp_dir, "all_embeddings.json")
-    output_csv = os.path.join(exp_dir, "hit_at_k.csv")
+    suffix = f"_without_domain_shift" if args.without_domain_shift else ""
+    output_csv = os.path.join(exp_dir, f"hit_at_k{suffix}.csv")
 
     if args.compute_embeddings:
         print("Loading model")
@@ -228,7 +271,11 @@ def main(args):
     else:
         all_representations = load_embeddings(output_json)
 
-    all_data = find_neighbours(all_representations, test_folder=TEST_FOLDER, distance_type="euclidean")
+    all_data = find_neighbours(all_representations, 
+                               test_folder=TEST_FOLDER, 
+                               distance_type="euclidean",
+                               without_domain_shift=args.without_domain_shift,
+                               ratio=args.ratio)
 
     results = []
     print(f"Computing Hit@k results with {TEST_FOLDER} as test")
@@ -251,6 +298,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--compute_embeddings", action="store_true")
     parser.add_argument("--k", type=int, nargs="+", default=[1, 2, 3, 5, 10], help="List of K values for Hit@K evaluation")
+    parser.add_argument("--without_domain_shift", action="store_true", help="Split the data between indexing and test without separating depending on the farm")
+    parser.add_argument("--ratio", type=float, default=0.2, help="Fraction of samples per domain used as queries when without_domain_shift=True \
+                                                                  (remaining samples form the index set).")
     
     # For emebedding extraction : 
     ## Dataset parameters
@@ -274,6 +324,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--pin_mem", type=bool, default=torch.cuda.is_available())
+
 
     args = parser.parse_args()
 
