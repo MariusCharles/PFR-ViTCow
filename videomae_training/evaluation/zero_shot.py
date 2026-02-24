@@ -60,7 +60,8 @@ import numpy as np
 def split_intra_domain_stratified(
     all_representations,
     ratio,
-    domain_names
+    domain_names,
+    seed=42,
     ):
     """
     Stratified intra-domain split.
@@ -71,7 +72,8 @@ def split_intra_domain_stratified(
     """
     index_data = []
     query_data = []
-
+    rng = random.Random(seed)
+    
     # Group by domain
     domains = {name: [] for name in domain_names}
     for r in all_representations:
@@ -102,7 +104,7 @@ def split_intra_domain_stratified(
             by_label[r[1]].append(r)
 
         for label, label_samples in by_label.items():
-            random.shuffle(label_samples)
+            rng.shuffle(label_samples)
 
             n_total_label = total_per_label[label]
             n_domain_label = len(label_samples)
@@ -110,7 +112,7 @@ def split_intra_domain_stratified(
             n_test = max(1, int(n_domain_label * ratio))
 
             max_allowed_test_global = n_total_label - int(np.ceil((1 - ratio) * n_total_label))
-            remaining_capacity = max_allowed_test_global - test_per_label[label]
+            remaining_capacity = n_total_label - test_per_label[label]
             n_test = min(n_test, max(0, remaining_capacity))
 
             if test_per_label[label] == 0 and n_test == 0:
@@ -171,7 +173,7 @@ def find_neighbours(
     else:
         # Query et index en fonction du ratio par domaine
         index_data, query_data = split_intra_domain_stratified(all_representations, ratio, FARM_NAMES.keys())
-
+        print(len(query_data))
     if len(query_data) == 0 or len(index_data) == 0:
         raise ValueError("Query or index set is empty.")
 
