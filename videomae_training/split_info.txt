@@ -1,0 +1,18 @@
+Train: 2393
+Val: 594
+Test: 836
+
+Validation distribution:
+label
+Lying            258
+Standing         183
+Feeding          111
+Walking           24
+Scratching         8
+Drinking           4
+Self-grooming      4
+Other              2
+Name: count, dtype: int64
+
+Class mapping:
+{'Drinking': 0, 'Feeding': 1, 'Lying': 2, 'Other': 3, 'Scratching': 4, 'Self-grooming': 5, 'Standing': 6, 'Walking': 7}

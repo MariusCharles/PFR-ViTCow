@@ -5,8 +5,13 @@ from sklearn.metrics import (
     accuracy_score,
     precision_score,
     recall_score,
-    fbeta_score
+    fbeta_score,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
 )
+from sklearn.preprocessing import label_binarize
+import os
+import matplotlib.pyplot as plt
 
 def hit_at_k(
     all_data: Dict[int, Dict[str, List[int]]],
@@ -86,18 +91,58 @@ def classification_metrics(
     """
     metrics = {
         "accuracy": accuracy_score(y_true, y_pred),
-        "precision": precision_score(y_true, y_pred, average=average_type),
-        "recall": recall_score(y_true, y_pred, average=average_type),
+        "precision": precision_score(y_true, y_pred, average=average_type, zero_division=0),
+        "recall": recall_score(y_true, y_pred, average=average_type, zero_division=0),
         f"f{beta}": fbeta_score(y_true, y_pred, beta=beta, 
-                                average=average_type),
+                                average=average_type, zero_division=0),
     }
 
     if y_scores is not None:
-        metrics["mAP_macro"] = average_precision_score(
-            y_true, y_scores, average="macro"
-        )
-        metrics["mAP_micro"] = average_precision_score(
-            y_true, y_scores, average="micro"
+        n_classes = y_scores.shape[1]
+        classes = np.arange(n_classes)
+        y_true = label_binarize(y_true, classes=classes) #One-hot encoding
+
+        metrics["mAP"] = average_precision_score(
+            y_true, y_scores, average=average_type
         )
 
     return metrics
+
+def compute_and_save_confusion_matrix(
+    y_true: Sequence[int],
+    y_pred: Sequence[int],
+    class_names: Sequence[str],
+    output_dir: str,
+    suffix: str = "",
+    normalize=None  # None | "true" | "pred" | "all"
+):
+    """
+    normalize:
+        None     → matrice brute
+        "true"   → normalisation par ligne (recall)
+        "pred"   → normalisation par colonne (precision)
+        "all"    → normalisation globale
+    """
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    labels = list(range(len(class_names)))
+
+    cm = confusion_matrix(
+        y_true,
+        y_pred,
+        labels=labels,
+        normalize=normalize
+    )
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                                  display_labels=class_names)
+    disp.plot(ax=ax, xticks_rotation=45, colorbar=True)
+    plt.tight_layout()
+
+    img_path = os.path.join(output_dir, f"confusion_matrix_{suffix}.png")
+    plt.savefig(img_path, dpi=600)
+    plt.close(fig)
+
+    return cm

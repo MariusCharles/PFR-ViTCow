@@ -133,7 +133,8 @@ def find_neighbours(
     test_folder: str,
     distance_type: str = "euclidean",
     without_domain_shift: bool = False,
-    ratio=1/5,
+    ratio: float =1/5,
+    seed: int = 42,
     )-> Dict[int, Dict]:
     """
     Construit le dictionnaire des voisins pour une évaluation retrieval.
@@ -172,8 +173,7 @@ def find_neighbours(
         query_data = [r for r in all_representations if test_folder in r[2]]
     else:
         # Query et index en fonction du ratio par domaine
-        index_data, query_data = split_intra_domain_stratified(all_representations, ratio, FARM_NAMES.keys())
-        print(len(query_data))
+        index_data, query_data = split_intra_domain_stratified(all_representations, ratio, FARM_NAMES.keys(), seed)
     if len(query_data) == 0 or len(index_data) == 0:
         raise ValueError("Query or index set is empty.")
 
@@ -326,24 +326,72 @@ def main(args):
     else:
         all_representations = load_embeddings(output_json)
 
-    all_data = find_neighbours(all_representations, 
-                               test_folder=TEST_FOLDER, 
-                               distance_type="euclidean",
-                               without_domain_shift=args.without_domain_shift,
-                               ratio=args.ratio)
+    if not args.without_domain_shift:
+        all_data = find_neighbours(all_representations, 
+                                   test_folder=TEST_FOLDER, 
+                                   distance_type="euclidean",
+                                   without_domain_shift=args.without_domain_shift,
+                                   ratio=args.ratio)
+    
+        results = []
+        print(f"Computing Hit@k results with {TEST_FOLDER} as test")
+        for k in args.k:
+            micro_value = hit_at_k(all_data, k, average="micro")
+            macro_value = hit_at_k(all_data, k, average="macro")
+            print(f"Hit@{k}: micro = {micro_value}, macro = {macro_value}")
+            results.append((k, micro_value, macro_value))
 
-    results = []
-    print(f"Computing Hit@k results with {TEST_FOLDER} as test")
-    for k in args.k:
-        micro_value = hit_at_k(all_data, k, average="micro")
-        macro_value = hit_at_k(all_data, k, average="macro")
-        print(f"Hit@{k}: micro = {micro_value}, macro = {macro_value}")
-        results.append((k, micro_value, macro_value))
+    else:
+        n_seeds = 100
+        micro_scores = {k: [] for k in args.k}
+        macro_scores = {k: [] for k in args.k}
+        
+        print("Computing Hit@k over 100 random seeds (intra-domain split)")
+
+        for seed in tqdm(range(n_seeds), desc="Seeds", leave=False):
+    
+            all_data = find_neighbours(
+                all_representations,
+                test_folder=TEST_FOLDER,
+                distance_type="euclidean",
+                without_domain_shift=True,
+                ratio=args.ratio,
+                seed=seed,
+            )
+    
+            for k in args.k:
+                micro_scores[k].append(hit_at_k(all_data, k, average="micro"))
+                macro_scores[k].append(hit_at_k(all_data, k, average="macro"))
+        
+        results = []
+        for k in args.k:
+    
+            micro_arr = np.array(micro_scores[k])
+            macro_arr = np.array(macro_scores[k])
+    
+            micro_mean = micro_arr.mean()
+            macro_mean = macro_arr.mean()
+    
+            micro_se = micro_arr.std(ddof=1) / np.sqrt(n_seeds)
+            macro_se = macro_arr.std(ddof=1) / np.sqrt(n_seeds)
+    
+            print(
+                f"Hit@{k}: "
+                f"micro = {micro_mean:.4f} ± {micro_se:.4f}, "
+                f"macro = {macro_mean:.4f} ± {macro_se:.4f}"
+            )
+    
+            results.append((k, micro_mean, macro_mean, micro_se, macro_se))
 
     with open(output_csv, "w") as f:
-        f.write("k,hit_at_k_micro,hit_at_k_macro\n")
-        for k, micro_value, macro_value in results:
-            f.write(f"{k},{micro_value},{macro_value}\n")
+        if not args.without_domain_shift:
+            f.write("k,hit_at_k_micro,hit_at_k_macro\n")
+            for k, micro_value, macro_value in results:
+                f.write(f"{k},{micro_value},{macro_value}\n")
+        else:
+            f.write("k,hit_at_k_micro_mean,hit_at_k_macro_mean,hit_at_k_micro_se,hit_at_k_macro_se\n")
+            for k, micro_mean, macro_mean, micro_se, macro_se in results:
+                f.write(f"{k},{micro_mean},{macro_mean},{micro_se},{macro_se}\n")
 
     print(f"Saved metrics to {output_csv}")
 
