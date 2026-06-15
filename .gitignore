@@ -1,0 +1,6 @@
+**.mp4
+**/data/
+**.pyc
+**/__pycache__/
+
+**wandb/
