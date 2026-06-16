@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-sam3 = { path = "sam3" }
+sam3 = { path = "sam3", editable = true }
 
 # Uncomment if uv can't resolve torch from PyPI:
 # [[tool.uv.index]]
