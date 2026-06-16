@@ -548,8 +548,8 @@ class Attention(nn.Module):
 
         self.register_buffer("freqs_cis", freqs_cis)
         if self.use_rope_real:
-            self.register_buffer("freqs_cis_real", freqs_cis.real)
-            self.register_buffer("freqs_cis_imag", freqs_cis.imag)
+            self.register_buffer("freqs_cis_real", freqs_cis.real, persistent=False)
+            self.register_buffer("freqs_cis_imag", freqs_cis.imag, persistent=False)
 
     def _apply_rope(self, q, k) -> Tuple[Tensor, Tensor]:
         if not self.use_rope:
