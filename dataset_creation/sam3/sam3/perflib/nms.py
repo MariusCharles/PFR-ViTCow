@@ -6,7 +6,6 @@ import logging
 
 import numpy as np
 import torch
-
 from sam3.perflib.masks_ops import mask_iou
 
 

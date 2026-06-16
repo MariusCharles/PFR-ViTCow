@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from PIL import Image as PILImage
 from pycocotools import mask as mask_util
-
 from sam3.train.data.sam3_image_dataset import Datapoint
 from torchvision.ops import masks_to_boxes
 
@@ -250,9 +249,9 @@ class RandomGeometricInputsAPI:
     def _get_target_object(self, datapoint, query):
         img = datapoint.images[query.image_id]
         targets = query.object_ids_output
-        assert (
-            len(targets) == 1
-        ), "Geometric queries only support a single target object."
+        assert len(targets) == 1, (
+            "Geometric queries only support a single target object."
+        )
         target_idx = targets[0]
         return img.objects[target_idx]
 

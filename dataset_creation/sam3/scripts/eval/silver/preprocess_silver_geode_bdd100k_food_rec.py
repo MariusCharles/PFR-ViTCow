@@ -51,7 +51,7 @@ def main(args, n_workers=20):
         paths = [
             (
                 raw_folder_food_images
-                / f'{Path(each).stem.split("_")[-1]}{Path(each).suffix}',
+                / f"{Path(each).stem.split('_')[-1]}{Path(each).suffix}",
                 processed_folder / each,
             )
             for each in img_filenames

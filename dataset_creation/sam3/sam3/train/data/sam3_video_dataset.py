@@ -3,7 +3,6 @@
 # pyre-unsafe
 
 import copy
-
 import io
 import json
 import logging
@@ -16,11 +15,9 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import torch
 import torchvision
-
 # from decord import cpu, VideoReader
 
 from iopath.common.file_io import PathManager
-from PIL import Image as PILImage
 
 from .sam3_image_dataset import Datapoint, Sam3ImageDataset
 
@@ -164,7 +161,7 @@ class VideoGroundingDataset(Sam3ImageDataset):
     def _sample_stage_ids(self, queries, num_stages_sample, stage_stride):
         """Sample a subset of stage ids from all queries."""
         # Later we can perhaps turn it into a Sampler class to be more flexible.
-        all_stage_ids = sorted(set(q["query_processing_order"] for q in queries))
+        all_stage_ids = sorted({q["query_processing_order"] for q in queries})
         num_stages_total = len(all_stage_ids)
         if num_stages_total < num_stages_sample:
             raise ValueError("Not enough stages to sample")
@@ -220,9 +217,9 @@ class VideoGroundingDataset(Sam3ImageDataset):
             for query in filtered_queries:
                 ptr_x_is_empty = query["ptr_x_query_id"] in [None, -1]
                 ptr_y_is_empty = query["ptr_y_query_id"] in [None, -1]
-                assert (
-                    ptr_x_is_empty and ptr_y_is_empty
-                ), "Remapping stage ids is not supported for queries with non-empty ptr_x or ptr_y pointers"
+                assert ptr_x_is_empty and ptr_y_is_empty, (
+                    "Remapping stage ids is not supported for queries with non-empty ptr_x or ptr_y pointers"
+                )
                 query["query_processing_order"] = stage_id_old2new[
                     query["query_processing_order"]
                 ]

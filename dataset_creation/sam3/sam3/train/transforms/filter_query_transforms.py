@@ -4,12 +4,10 @@
 
 import logging
 import random
-
 from collections import defaultdict
 from typing import List, Optional, Union
 
 import torch
-
 from sam3.train.data.sam3_image_dataset import Datapoint, FindQuery, Object
 
 
@@ -381,9 +379,9 @@ class FlexibleFilterFindGetQueries:
         if len(new_find_queries) == 0:
             start_with_zero_check = True
 
-        assert (
-            start_with_zero_check
-        ), "Invalid Find queries, they need to start at query_processing_order = 0"
+        assert start_with_zero_check, (
+            "Invalid Find queries, they need to start at query_processing_order = 0"
+        )
 
         datapoint.find_queries = new_find_queries
 
@@ -395,7 +393,7 @@ class FlexibleFilterFindGetQueries:
 
         # The deletion may have removed intermediate steps, so we need to remap to make them contiguous again
         all_stages = sorted(
-            list(set(q.query_processing_order for q in datapoint.find_queries))
+            list({q.query_processing_order for q in datapoint.find_queries})
         )
         stage_map = {qpo: i for i, qpo in enumerate(all_stages)}
         for i in range(len(datapoint.find_queries)):
@@ -404,12 +402,12 @@ class FlexibleFilterFindGetQueries:
 
         # Final step, clear up objects that are not used anymore
         for img_id in range(len(datapoint.images)):
-            all_objects_ids = set(
+            all_objects_ids = {
                 i
                 for find in datapoint.find_queries
                 for i in find.object_ids_output
                 if find.image_id == img_id
-            )
+            }
             unused_ids = (
                 set(range(len(datapoint.images[img_id].objects))) - all_objects_ids
             )
