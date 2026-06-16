@@ -1,0 +1,32 @@
+[project]
+name = "pfr-vitcow-videomae"
+version = "0.1.0"
+description = "VideoMAE training for PFR-ViTCow"
+requires-python = "~=3.10.0"
+dependencies = [
+    "numpy==1.21.6",
+    "torch==1.13.1",
+    "torchvision==0.14.1",
+    "timm==0.4.12",
+    "einops",
+    "tensorboardX",
+    "decord",
+    "opencv-python==4.7.0.72",
+    "pandas==1.3.5",
+    "scipy==1.7.3",
+    "scikit-learn==1.0.2",
+]
+
+[tool.uv]
+# Only resolve for Linux Python 3.10 — avoids cross-platform conflicts with old pinned packages
+environments = ["sys_platform == 'linux' and python_version == '3.10'"]
+
+# torch 1.13.1 is not on PyPI — needs the old PyTorch index
+[[tool.uv.index]]
+name = "pytorch-cu116"
+url = "https://download.pytorch.org/whl/cu116"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu116" }]
+torchvision = [{ index = "pytorch-cu116" }]
